@@ -6,7 +6,18 @@
       deep-key="users"
       :rows="users"
       label="Список пользователей"
-    />
+    >
+      <template #body="props">
+        <AppRow :props="props">
+          <AppCell :props="props">
+            {{ props.name }}
+          </AppCell>
+          <AppCell :props="props">
+            {{ props.phone }}
+          </AppCell>
+        </AppRow>
+      </template>
+    </AppTable>
     <button class="create-btn" @click="$modals.show('new-user-modal')">
       Создать пользователя
     </button>
@@ -18,6 +29,8 @@
 
 <script>
 import { getUserList, createUUIDv4 } from './common/helpers';
+import AppCell from './components/AppCell';
+import AppRow from './components/AppRow';
 import AppTable from './components/AppTable';
 import UserForm from './components/UserForm';
 import BaseModal from './plugins/modals/BaseModal';
@@ -28,22 +41,23 @@ export default {
     AppTable,
     UserForm,
     BaseModal,
+    AppRow,
+    AppCell,
   },
   data() {
     return {
       columns: [
         {
           name: 'name',
-          required: true,
           label: 'Имя',
           field: 'name',
           sortable: true,
         },
         {
           name: 'phone',
-          required: true,
           field: 'phone',
           label: 'Телефон',
+          sortable: true,
         },
       ],
       users: [
@@ -66,7 +80,14 @@ export default {
                 {
                   name: 'Катя',
                   phone: '89467886433',
-                  users: [],
+                  users: [
+                    {
+                      id: 10,
+                      name: 'Ирина',
+                      phone: '89164222567',
+                      users: [],
+                    },
+                  ],
                 },
               ],
             },

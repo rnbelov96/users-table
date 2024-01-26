@@ -2,33 +2,26 @@
   <label class="input">
     <p class="input__label">{{ options.label }}</p>
     <div class="input__wrapper">
-      <TheMask
-        :mask="options.mask"
-        type="tel"
-        v-model="inputValue"
-        :placeholder="options.placeholder"
-        class="input__input"
-        @focus.native="onFocus"
-      />
+      <select class="input__select" v-model="selectValue">
+        <option disabled value="">{{ options.placeholder }}</option>
+        <option :value="el.value" :key="el.value" v-for="el in options.options">
+          {{ el.name }}
+        </option>
+      </select>
       <p v-show="error" class="input__error">{{ error }}</p>
     </div>
   </label>
 </template>
 
 <script>
-import { TheMask } from 'vue-the-mask';
-
 export default {
-  components: {
-    TheMask,
-  },
   props: {
     options: {
       type: Object,
       required: true,
     },
     value: {
-      type: String,
+      type: [String, Number],
       required: true,
     },
     error: {
@@ -37,7 +30,7 @@ export default {
   },
   emits: ['input'],
   computed: {
-    inputValue: {
+    selectValue: {
       get() {
         return this.value;
       },
@@ -46,12 +39,9 @@ export default {
       },
     },
   },
-  methods: {
-    onFocus() {
-      if (this.value.length < this.options.minValue.length) {
-        this.$emit('input', ' ');
-      }
-    },
-  },
 };
 </script>
+
+<style scoped>
+
+</style>

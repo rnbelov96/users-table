@@ -1,81 +1,40 @@
 <template>
   <div class="table">
-    <p v-if="label" class="table__title">{{ label }}</p>
-    <div class="table__body">
+    <h3 v-if="label" class="table__title">{{ label }}</h3>
+    <div class="table__row">
       <div
-        class="table__column"
-        v-for="(column, index) in columns"
-        :key="`${column.label}-${index}-${column.field}`"
+        :key="column.field"
+        v-for="column in columns"
+        @click="sortClickHandler(column.field)"
+        :class="{'--sortable': column.sortable}"
+        class="table__cell table__head"
       >
-        <div
-          @click="sortClickHandler(column.field)"
-          :class="{'--sortable': column.sortable}"
-          class="table__cell table__head"
-        >
-          <span>{{ column.label }}</span>
-          <svg
-            v-show="sorting.key === column.field"
-            :class="{
-              '--rotated': sorting.direction === 'DESC',
-            }"
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-          >
-            <path
-              fill="currentColor"
-              d="M11 18V8.8l-3.6 3.6L6 11l6-6l6 6l-1.4 1.4L13 8.8V18z"
-            />
-          </svg>
-        </div>
-        <div
-          class="table__cell"
+        <span>{{ column.label }}</span>
+        <svg
+          v-show="sorting.key === column.field"
           :class="{
-            '--expandable': index === 0 && row.users.length > 0
+            '--rotated': sorting.direction === 'DESC',
           }"
-          :style="{
-            marginLeft: index === 0 ? `${row.level * 1}rem` : 0,
-          }"
-          :key="`${row[column.field]}-${i}`"
-          v-for="(row, i) in extendedColumns[index]"
-          @click="toggleExpand(row.id)"
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
         >
-          <span v-if="index === 0 && row[deepKey] && row[deepKey].length > 0">
-            <svg
-              v-if="expandedIds.includes(row.id)"
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-            >
-              <path fill="currentColor" d="M19 12.998H5v-2h14z" />
-            </svg>
-            <svg
-              v-else
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-            >
-              <path
-                fill="currentColor"
-                d="M11 13H6q-.425 0-.712-.288T5 12q0-.425.288-.712T6 11h5V6q0-.425.288-.712T12 5q.425 0 .713.288T13 6v5h5q.425 0 .713.288T19 12q0 .425-.288.713T18 13h-5v5q0 .425-.288.713T12 19q-.425 0-.712-.288T11 18z"
-              />
-            </svg>
-          </span>
-          <span>{{ row[column.field] }}</span>
-        </div>
+          <path
+            fill="currentColor"
+            d="M11 18V8.8l-3.6 3.6L6 11l6-6l6 6l-1.4 1.4L13 8.8V18z"
+          />
+        </svg>
       </div>
     </div>
+    <slot name="body" v-bind="row" v-for="row in extendedRows"></slot>
   </div>
 </template>
 
 <script>
-import { flatArray, sortArray } from '../common/helpers/';
+import { flatArray, sortArray } from '../common/helpers';
 
 export default {
-  name: 'AppTable',
   props: {
     label: {
       type: String,
@@ -98,6 +57,11 @@ export default {
       required: false,
     },
   },
+  provide() {
+    return {
+      toggleExpand: this.toggleExpand,
+    };
+  },
   data() {
     return {
       sorting: {
@@ -114,12 +78,13 @@ export default {
     flattenArray() {
       return flatArray(this.sortedArray, this.deepKey, this.expandedIds);
     },
-    extendedColumns() {
-      return this.columns.map(() =>
-        [...new Array(this.flattenArray.length).keys()].map(
-          (_, index) => this.flattenArray[index],
-        ),
-      );
+    extendedRows() {
+      return this.flattenArray.map(row => ({
+        ...row,
+        expandable: row[this.deepKey] && row[this.deepKey].length > 0,
+        expanded: this.expandedIds.includes(row.id),
+        hidden: row.level > 0 && !this.expandedIds.includes(row.parentId),
+      }));
     },
   },
   methods: {
@@ -145,13 +110,29 @@ export default {
 
       this.sorting.direction = 'DESC';
     },
+    closeChildren(childrenList) {
+      childrenList.forEach((el) => {
+        this.expandedIds = this.expandedIds.filter(id => id !== el.id);
+
+        if (el[this.deepKey]) {
+          this.closeChildren(el[this.deepKey]);
+        }
+      });
+    },
     toggleExpand(idToToggle) {
       const index = this.expandedIds.findIndex(id => id === idToToggle);
 
-      if (~index) {
-        this.expandedIds.splice(index, 1);
-      } else {
+      if (index === -1) {
         this.expandedIds.push(idToToggle);
+        return;
+      }
+
+      this.expandedIds.splice(index, 1);
+
+      const element = this.flattenArray.find(el => el.id === idToToggle);
+
+      if (element[this.deepKey]) {
+        this.closeChildren(element[this.deepKey]);
       }
     },
   },
@@ -159,12 +140,17 @@ export default {
 </script>
 
 <style scoped>
-.table__body {
+.table__title {
+  font-size: 1.5rem;
+}
+.table__row {
   display: flex;
 }
 
-.table__row {
-  display: flex;
+.table__cell {
+  border: 1px solid black;
+  padding: 1rem;
+  flex: 1 1 0;
 }
 
 .table__cell {
@@ -178,6 +164,10 @@ export default {
   cursor: pointer
 }
 
+.table__cell svg.--rotated {
+  transform: rotate(180deg);
+}
+
 .table__head {
   pointer-events: none;
   text-align: center;
@@ -187,19 +177,5 @@ export default {
 
 .table__head.--sortable {
   pointer-events: initial;
-}
-
-.table__cell svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.table__cell.--expandable {
-  cursor: pointer;
-  pointer-events: initial;
-}
-
-.table__cell svg.--rotated {
-  transform: rotate(180deg);
 }
 </style>

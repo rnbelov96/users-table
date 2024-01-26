@@ -1,31 +1,23 @@
 <template>
   <form class="user-form" @submit.prevent="submit">
-    <div class="user-form__input-box">
-      <label for="user-form-name" class="user-form__input-label">Имя</label>
-      <input id="user-form-name" type="text" v-model="name">
-    </div>
-    <div class="user-form__input-box">
-      <label for="user-form-phone" class="user-form__input-label">Телефон</label>
-      <AppPhoneInput id="user-form-phone" v-model="phone" />
-    </div>
-    <div class="user-form__input-box">
-      <label class="user-form__input-label">Начальник</label>
-      <select class="user-form__select" v-model="bossIndex">
-        <option disabled value="">Выберите начальника</option>
-        <option :value="index" :key="boss.id" v-for="(boss, index) in bossList">
-          {{ boss.name }}
-        </option>
-      </select>
-    </div>
-    <button :disabled="disableBtn" type="submit">Сохранить</button>
+    <InputFactory
+      :key="formField.name"
+      v-for="formField in formFields"
+      v-model="formData[formField.name]"
+      :options="formField"
+      :error="validations[formField.name].error"
+    />
+    <button type="submit">Сохранить</button>
   </form>
 </template>
 
 <script>
-import AppPhoneInput from '../common/components/AppPhoneInput';
+import InputFactory from '../common/components/InputFactory';
+import { FormBuilder, validateFields } from '../common/helpers';
 
 export default {
   name: 'UserForm',
+  components: { InputFactory },
   props: {
     bossList: {
       type: Array,
@@ -34,28 +26,70 @@ export default {
   },
   data() {
     return {
-      name: '',
-      phone: '',
-      bossIndex: '',
+      formFields: [],
+      formData: {
+        name: '',
+        phone: '',
+        bossIndex: '',
+      },
+      validations: this.setEmptyValidations(),
     };
   },
   emits: ['addUser'],
+  created() {
+    this.formFields = new FormBuilder()
+      .addTextField({
+        name: 'name',
+        label: 'Имя',
+      })
+      .addPhoneField({
+        name: 'phone',
+        label: 'Телефон',
+      })
+      .addSelectField({
+        name: 'bossIndex',
+        label: 'Выберите начальника',
+        options: this.optionList,
+      })
+      .build();
+  },
   computed: {
-    disableBtn() {
-      return this.name === '' || this.phone === '' || this.bossIndex === '';
+    optionList() {
+      return this.bossList.map((boss, index) => ({
+        value: index,
+        name: boss.name,
+      }));
     },
   },
   methods: {
+    setEmptyValidations() {
+      return {
+        name: {
+          error: '',
+          rules: ['required'],
+        },
+        phone: {
+          error: '',
+          rules: ['required'],
+        },
+        bossIndex: {
+          error: '',
+          rules: ['required'],
+        },
+      };
+    },
     submit() {
+      if (!validateFields(this.formData, this.validations)) {
+        return;
+      }
       this.$emit('addUser', {
-        name: this.name,
-        phone: `8${this.phone}`,
-        bossIndex: this.bossIndex,
+        name: this.formData.name,
+        phone: `8${this.formData.phone}`,
+        bossIndex: this.formData.bossIndex,
       });
       this.$modals.close();
     },
   },
-  components: { AppPhoneInput },
 };
 </script>
 
@@ -63,12 +97,6 @@ export default {
 .user-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.user-form__input-box {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 1rem;
+  gap: 2rem;
 }
 </style>

@@ -1,13 +1,16 @@
-export const flatArray = (arr, deepKey, expandedUsers) => {
+export const flatArray = (arr, deepKey) => {
   const flattenArray = [];
 
-  const flat = (array, level) => {
+  const flat = (array, level, parentId) => {
     array.forEach((el) => {
       const objCopy = JSON.parse(JSON.stringify(el));
       objCopy.level = level;
+      if (parentId) {
+        objCopy.parentId = parentId;
+      }
       flattenArray.push(objCopy);
-      if (el[deepKey] && expandedUsers.includes(el.id)) {
-        flat(el[deepKey], level + 1);
+      if (el[deepKey]) {
+        flat(el[deepKey], level + 1, el.id);
       }
     });
   };
